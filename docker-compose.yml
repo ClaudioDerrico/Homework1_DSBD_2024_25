@@ -1,0 +1,48 @@
+services:
+  data_cleaner:
+    build:
+      context: .
+      dockerfile: ./cleaner/Dockerfile
+    depends_on:
+      - database
+    environment:
+      - DATABASE_URL=postgresql://Hw1:123ciao@database:5432/Hw1DB
+    restart: always 
+      
+  server:
+    build:
+      context: .
+      dockerfile: ./server/Dockerfile
+    ports:
+      - "50051:50051"
+    depends_on:
+      - database
+    environment:
+      - DATABASE_URL=postgresql://Hw1:123ciao@database:5432/Hw1DB
+    restart: always 
+
+  data_collector:
+    build:
+      context: .
+      dockerfile: ./data_collector/Dockerfile
+    depends_on:
+      - database
+    environment:
+      - DATABASE_URL=postgresql://Hw1:123ciao@database:5432/Hw1DB
+    restart: always 
+
+  database:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: Hw1
+      POSTGRES_PASSWORD: 123ciao
+      POSTGRES_DB: Hw1DB
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always 
+    
+
+volumes:
+  db_data:
