@@ -1,10 +1,11 @@
 import yfinance as yf
 import time
-from sqlalchemy.orm import sessionmaker
 from common.database import SessionLocal
 from common.models import FinancialData, User
 from circuit_breaker import CircuitBreaker
+import logging
 
+logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 def get_stock_price(ticker):
     data = yf.Ticker(ticker)
     hist = data.history(period="1d")
