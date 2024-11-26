@@ -6,6 +6,8 @@ import datetime
 import random
 import string
 from time import sleep
+import logging
+
 
 session_email = None
 
@@ -21,37 +23,48 @@ def ticker_verifier(ticker):
     """
     Verifica se il ticker è valido utilizzando yfinance.
     """
+    logging.getLogger('yfinance').setLevel(logging.CRITICAL)
     try:
         dati = yf.download(ticker, period="1d", progress=False)
         if not dati.empty:
             print(f"Il ticker '{ticker}' è valido.")
             return True
         else:
-            print(f"Il ticker '{ticker}' non è valido.")
+            print(f"Il ticker '{ticker}' non è valido o non è possibile scaricare i dati.")
             return False
     except Exception as e:
         print(f"Errore durante la verifica del ticker: {e}")
         return False
 
-def send_request_with_retry(stub_method, request, max_retries=5):
+def send_request_with_retry(stub_method, request, max_retries=5, channel=None, stub=None):
     """
-    Funzione generica per inviare richieste con ritentativi utilizzando lo stesso request_id.
+    Invia una richiesta gRPC con ritentativi e verifica lo stato del canale.
     """
     attempts = 0
     while attempts < max_retries:
         try:
-            response = stub_method(request, timeout=5)  
-            return response
+            response = stub_method(request, timeout=10)
+            return response  
         except grpc.RpcError as e:
             if e.code() in [grpc.StatusCode.DEADLINE_EXCEEDED, grpc.StatusCode.UNAVAILABLE]:
                 attempts += 1
-                print(f"Tentativo {attempts} di {max_retries} fallito. Riprovo...")
-                sleep(5) 
+                print(f"Tentativo {attempts} di {max_retries} fallito. Connessione al server non riuscita. Riprovo...")
+                
+                if channel and channel.get_state(True) in [grpc.ChannelConnectivity.TRANSIENT_FAILURE, grpc.ChannelConnectivity.SHUTDOWN]:
+                    print("Il canale è in errore. Sto tentando di ripristinare la connessione...")
+                    channel = grpc.insecure_channel('localhost:50051')
+                    stub = service_pb2_grpc.UserServiceStub(channel)
+                    stub_method = getattr(stub, stub_method._method)
+
+                sleep(10)
+                continue
             else:
-                print(f"Errore durante la richiesta: {e}")
+                print("Errore durante la comunicazione con il server. Riprova più tardi.")
                 break
     print("Impossibile contattare il server dopo diversi tentativi.")
     return None
+
+
 
 def run():
     global session_email
