@@ -5,7 +5,6 @@ import re
 import threading
 from cachetools import TTLCache
 import logging
-from sqlalchemy.exc import OperationalError
 from common.database import SessionLocal, engine
 from common import models
 import service_pb2
